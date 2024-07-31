@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Data.SqlClient;
 using System.Threading.Tasks;
 using System.ServiceModel.Syndication;
+using Microsoft.AspNetCore.Routing;
 
 namespace WebApi.Services
 {
@@ -17,7 +18,8 @@ namespace WebApi.Services
     {
         IEnumerable<Object> GetAllCustomMarkets();
         Task<string> GetLastAuditory();
-        Task<Response<string>> SignMarket(SingMarketModel sign);
+        Task<Response<string>> SignMarket(SignMarketModel sign);
+        Task<Response<string>> SignAllMarket(int lineCode, int signedUser);
         IEnumerable<Object> GetAllCustomMarketsByLine(int[] linesCodesArray);
         Object GetByCode(int code);
         CustomMarket Create(CustomMarketRequest customMarket);
@@ -76,7 +78,7 @@ namespace WebApi.Services
             }
         }
 
-        public async Task<Response<string>> SignMarket(SingMarketModel sign)
+        public async Task<Response<string>> SignMarket(SignMarketModel sign)
         {
             var response = new Response<string>();
             try
@@ -101,6 +103,52 @@ namespace WebApi.Services
                 else
                 {
                     response.Message = string.Format("No existe el mercado solicitado");
+                    response.Status = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Message = string.Format("{0}", ex.Message);
+                response.Status = false;
+            }
+
+            return response;
+        }
+        public async Task<Response<string>> SignAllMarket(int lineCode, int signedUser)
+        {
+            var response = new Response<string>();
+            response.Message = string.Empty;
+            response.Status = true;
+            try
+            {
+                var customMarkets = await _context.CustomMarkets.Where(c => c.LineCode == lineCode).ToListAsync();
+                if (customMarkets.Any())
+                {
+                    foreach (var cm in customMarkets)
+                    {
+                        if (!cm.TestMarket)
+                        {
+                            var sign = new SignMarketModel()
+                            {
+                                CustomMarketCode = cm.Code,
+                                SignedUser = signedUser
+                            };
+                            //Ejecutar el SP de firma
+                            await _context.SP_SignMarket(sign);
+                        }
+                        else
+                        {
+                            response.Message += string.Format("No se puede firmar el mercado {0}, porque es de prueba\n", cm.Description);
+                            response.Status = false;
+                        }
+                    }
+
+                    if (response.Status)
+                        response.Message += string.Format("Se han firmado correctamente todos los mercados de la linea {0}", lineCode);
+                }
+                else
+                {
+                    response.Message = string.Format("No existen Mercados para la linea {0}", lineCode);
                     response.Status = false;
                 }
             }

@@ -54,7 +54,7 @@ namespace WebApi.Helpers
 
         public DataContext(DbContextOptions<DataContext> options) : base(options) { }
 
-        public virtual async Task<int> SP_SignMarket(SingMarketModel sign)
+        public virtual async Task<int> SP_SignMarket(SignMarketModel sign)
         {
             return Database.ExecuteSqlRaw($"EXEC SignMarket @customMarketCode = {sign.CustomMarketCode} , @signedUser = {sign.SignedUser}");
         }

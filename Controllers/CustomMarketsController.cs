@@ -60,7 +60,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("SignMarket")]
-        public async Task<IActionResult> SignMarket([FromBody] SingMarketModel request)
+        public async Task<IActionResult> SignMarket([FromBody] SignMarketModel request)
         {
             try
             {
@@ -163,6 +163,21 @@ namespace WebApi.Controllers
 
             var _customMarket = _customMarketService.Clone(code, customMarket);
             return Ok(_customMarket);
+        }
+
+        [HttpPost("SignAllMarket/{lineCode}/{signedUser}")]
+        public async Task<IActionResult> SignAllMarket(int lineCode, int signedUser)
+        {
+            try
+            {
+                var signed = await _customMarketService.SignAllMarket(lineCode, signedUser);
+
+                return Ok(signed);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
         }
 
         [HttpGet("preview/{code}")]

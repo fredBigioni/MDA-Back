@@ -26,13 +26,16 @@ namespace WebApi.Services
     {
         private DataContext _context;
         private readonly AppSettings _appSettings;
+        private readonly ILoggerService _loggerService;
 
         public LaboratoryService(
             DataContext context,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings,
+            ILoggerService loggerService)
         {
             _context = context;
             _appSettings = appSettings.Value;
+            _loggerService = loggerService;
         }
 
         public IEnumerable<Laboratory> GetAll()
@@ -73,6 +76,8 @@ namespace WebApi.Services
             _laboratoryGroup.LaboratoryGroupDetails = _laboratoryGroupDetails;
 
             _context.LaboratoryGroups.Add(_laboratoryGroup);
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} creó el grupo de laboratorios {_laboratoryGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+
             _context.SaveChanges();
             return _laboratoryGroup;
         }
@@ -128,6 +133,8 @@ namespace WebApi.Services
             _laboratoryGroup.LaboratoryGroupDetails = _laboratoryGroupDetails;
 
             _context.Entry(_laboratoryGroup).State = EntityState.Modified;
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} modificó el grupo de laboratorios {_laboratoryGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+
             _context.SaveChanges();
             return _laboratoryGroup;
         }
@@ -148,6 +155,8 @@ namespace WebApi.Services
             }
 
             _context.LaboratoryGroups.Remove(_laboratoryGroup);
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} eliminó el grupo de laboratorios {_laboratoryGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+
             return _context.SaveChanges();                           
         }                  
     }

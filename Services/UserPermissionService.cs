@@ -19,15 +19,19 @@ namespace WebApi.Services
     {
         private DataContext _context;
         private readonly AppSettings _appSettings;
+        private readonly ILoggerService _loggerService;
 
         public UserPermissionService(
             DataContext context,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings
+,
+            ILoggerService loggerService)
         {
             _context = context;
             _appSettings = appSettings.Value;
+            _loggerService = loggerService;
         }
-   
+
         public UserPermissionResponse GetAllByUser(User user)
         {
             List<int?> lineGroupCodes = new List<int?>();
@@ -119,7 +123,9 @@ namespace WebApi.Services
                 }                                
             }
 
-           return  _context.SaveChanges();
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} modificó los permisos del usuario {user.Usuario}", UserLogged.userLogged.Usuario, _context, null);
+
+            return _context.SaveChanges();
         }
 
     }

@@ -28,13 +28,16 @@ namespace WebApi.Services
     {
         private DataContext _context;
         private readonly AppSettings _appSettings;
+        private readonly ILoggerService _loggerService;
 
         public LineGroupService(
             DataContext context,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings,
+            ILoggerService loggerService)
         {
             _context = context;
             _appSettings = appSettings.Value;
+            _loggerService = loggerService;
         }
 
         public IEnumerable<LineGroup> GetAll()
@@ -56,6 +59,8 @@ namespace WebApi.Services
             _lineGroup.Description = lineGroup.Description;
 
             _context.Entry(_lineGroup).State = EntityState.Modified;
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} modificó el grupo de lineas {_lineGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+
             return _context.SaveChanges();
         }
 
@@ -65,7 +70,10 @@ namespace WebApi.Services
 
             _lineGroup.Description = lineGroup.Description;
 
-            _context.LineGroups.Add(_lineGroup);  
+            _context.LineGroups.Add(_lineGroup);
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} creó el grupo de lineas {_lineGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+
+
             _context.SaveChanges();
 
             return _lineGroup;            

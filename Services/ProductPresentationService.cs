@@ -9,6 +9,7 @@ using WebApi.Views;
 using WebApi.Helpers;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using System.Numerics;
 
 namespace WebApi.Services
 {
@@ -31,13 +32,16 @@ namespace WebApi.Services
     {
         private DataContext _context;
         private readonly AppSettings _appSettings;
+        private readonly ILoggerService _loggerService;
 
         public ProductPresentationService(
             DataContext context,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings,
+            ILoggerService loggerService)
         {
             _context = context;
             _appSettings = appSettings.Value;
+            _loggerService = loggerService;
         }
 
         public IEnumerable<Object> GetAllProductPresentations()
@@ -145,6 +149,9 @@ namespace WebApi.Services
             _productPresentationGroup.ProductPresentationGroupDetails = _productPresentationGroupDetails;
 
             _context.ProductPresentationGroups.Add(_productPresentationGroup);
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} creó el grupo de presentaciones {_productPresentationGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+
+
             _context.SaveChanges();
             return _productPresentationGroup;
         }      
@@ -201,6 +208,8 @@ namespace WebApi.Services
             _productPresentationGroup.ProductPresentationGroupDetails = _productPresentationGroupDetails;
 
             _context.Entry(_productPresentationGroup).State = EntityState.Modified;
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} modificó el grupo de presentaciones {_productPresentationGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+
             _context.SaveChanges();
             return _productPresentationGroup;
         }                
@@ -238,6 +247,9 @@ namespace WebApi.Services
             }
 
             _context.ProductPresentationGroups.Remove(_productPresentationGroup);
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} eliminó el grupo de presentaciones {_productPresentationGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+
+
             return _context.SaveChanges();   
         }
 

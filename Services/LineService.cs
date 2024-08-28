@@ -22,13 +22,16 @@ namespace WebApi.Services
     {
         private DataContext _context;
         private readonly AppSettings _appSettings;
+        private readonly ILoggerService _loggerService;
 
         public LineService(
             DataContext context,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings,
+            ILoggerService loggerService)
         {
             _context = context;
             _appSettings = appSettings.Value;
+            _loggerService = loggerService;
         }
 
         public IEnumerable<Line> GetAll()
@@ -67,6 +70,8 @@ namespace WebApi.Services
             _line.LineGroup = _lineGroup;
 
             _context.Entry(_line).State = EntityState.Modified;
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} modificó la linea {_line.Description}", UserLogged.userLogged.Usuario, _context, null);
+
             return _context.SaveChanges();
         }
 
@@ -81,7 +86,10 @@ namespace WebApi.Services
             _line.DrugReportHeader = line.DrugReportHeader;
             _line.DrugReportFooter = line.DrugReportFooter;
 
-            _context.Lines.Add(_line);  
+            _context.Lines.Add(_line);
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} creó la linea {_line.Description}", UserLogged.userLogged.Usuario, _context, null);
+
+
             _context.SaveChanges();
 
             return _line;            

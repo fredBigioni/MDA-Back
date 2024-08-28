@@ -4,5 +4,6 @@
     {
         public int SignedUser { get; set; }
         public int CustomMarketCode{ get; set; }
+
     }
 }

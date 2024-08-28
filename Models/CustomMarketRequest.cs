@@ -17,11 +17,14 @@ namespace WebApi.Models
         public int? MarketClass { get; set; }
         public int? MarketFilter { get; set; }
         public int? MarketReference { get; set; }
-        public int Order { get; set; }
+        public int? Order { get; set; }
         public bool? ProductReport { get; set; }
         public bool? Tcreport { get; set; }
         public bool TestMarket { get; set; }
         public bool TravelCrm { get; set; }
+        public string? AdUser { get; set; }
+        public string? ResponsibleName { get; set; }
+        public string? ResponsibleLastName { get; set; }
 
         public virtual ICollection<CustomMarketDetailRequest> CustomMarketDetail { get; set; }
     }

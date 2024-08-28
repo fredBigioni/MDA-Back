@@ -14,7 +14,7 @@ namespace WebApi.Views
         public string LineDescription { get; set; }
         public int? CustomMarketCode { get; set; }
         public string CustomMarketDescription { get; set; }        
-        public int? CustomMarketOrder { get; set; }
+        //public int? CustomMarketOrder { get; set; }
         public bool? CustomMarketTest { get; set; }
     }
 }

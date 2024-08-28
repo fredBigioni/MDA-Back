@@ -26,13 +26,16 @@ namespace WebApi.Services
     {
         private DataContext _context;
         private readonly AppSettings _appSettings;
+        private readonly ILoggerService _loggerService;
 
         public CustomMarketGroupService(
             DataContext context,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings,
+            ILoggerService loggerService)
         {
             _context = context;
             _appSettings = appSettings.Value;
+            _loggerService = loggerService;
         }
 
         public IEnumerable<CustomMarketGroup> GetAll()
@@ -64,6 +67,7 @@ namespace WebApi.Services
             _customMarketGroup.GroupCondition = customMarketGroup.GroupCondition;
 
             _context.Entry(_customMarketGroup).State = EntityState.Modified;
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} modificó el grupo de mercado {_customMarketGroup.Description}", UserLogged.userLogged.Usuario, _context, _customMarketGroup.CustomMarketCode);
             return _context.SaveChanges();
         }
 
@@ -75,7 +79,9 @@ namespace WebApi.Services
             _customMarketGroup.Description = customMarketGroup.Description;
             _customMarketGroup.GroupCondition = customMarketGroup.GroupCondition;
 
-            _context.CustomMarketGroups.Add(_customMarketGroup);  
+            _context.CustomMarketGroups.Add(_customMarketGroup);
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} se creo el grupo de mercado {_customMarketGroup.Description}", UserLogged.userLogged.Usuario, _context, _customMarketGroup.CustomMarketCode);
+
             _context.SaveChanges();
 
             return _customMarketGroup;
@@ -93,6 +99,8 @@ namespace WebApi.Services
             }
 
             _context.CustomMarketGroups.Remove(_customMarketGroup);
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} se eliminó el grupo de mercado {_customMarketGroup.Description}", UserLogged.userLogged.Usuario, _context, _customMarketGroup.CustomMarketCode);
+
             return _context.SaveChanges();   
         }
        

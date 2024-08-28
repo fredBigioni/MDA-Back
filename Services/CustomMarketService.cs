@@ -11,6 +11,8 @@ using System.Data.SqlClient;
 using System.Threading.Tasks;
 using System.ServiceModel.Syndication;
 using Microsoft.AspNetCore.Routing;
+using System.Text.Json;
+using System.Data;
 
 namespace WebApi.Services
 {
@@ -26,9 +28,14 @@ namespace WebApi.Services
         Object Update(int customMarketCode, CustomMarketRequest customMarket);
         Object Clone(int customMarketCode, CustomMarketRequest customMarket);
         Object Delete(int customMarketCode);
+        Task<MarketDetailResult> GetMarketDetailHistoricJsonAsync(int customMarketCode);
         IEnumerable<Object> GetPreviewByCode(int customMarketCode);
         IEnumerable<Object> GetTree();
         IEnumerable<Object> GetTree(User user);
+        Task<List<CustomMarketVersionHistoricModel>> GetMarketDetailHistoricByCustomMarketCode(int customMarketCode);
+        Task<List<ProductDetail>> GetMarketPreviewHistoricByCustomMarketCode(int versionCode);
+        Task<List<ProductDetail>> GetLastSignedPreviewHistoricByCustomMarketCode(int code);
+
     }
 
     public class CustomMarketService : ICustomMarketService
@@ -41,6 +48,7 @@ namespace WebApi.Services
         private ILineService _lineService;
         private ILineGroupService _lineGroupService;
         private ICustomMarketGroupService _customMarketGroupService;
+        private ILoggerService _loggerService;
 
         public CustomMarketService(
             DataContext context,
@@ -50,7 +58,8 @@ namespace WebApi.Services
             IUserPermissionService userPermissionService,
             ILineService lineService,
             ILineGroupService lineGroupService,
-            ICustomMarketGroupService customMarketGroupService)
+            ICustomMarketGroupService customMarketGroupService,
+            ILoggerService loggerService)
         {
             _context = context;
             _appSettings = appSettings.Value;
@@ -60,6 +69,7 @@ namespace WebApi.Services
             _lineService = lineService;
             _lineGroupService = lineGroupService;
             _customMarketGroupService = customMarketGroupService;
+            _loggerService = loggerService;
         }
 
         public async Task<string> GetLastAuditory()
@@ -93,6 +103,16 @@ namespace WebApi.Services
 
                         response.Message = string.Format("Mercado firmado correctamente");
                         response.Status = true;
+
+                        if(UserLogged.userLogged.Usuario == null)
+                        {
+                            response.Message = string.Format("Session Expirada");
+                            response.Status = false;
+
+                            return response;
+                        }
+                        _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} ha firmado el mercado {cm.Description}",UserLogged.userLogged.Usuario,_context,cm.Code);
+                        _context.SaveChanges();
                     }
                     else
                     {
@@ -319,6 +339,9 @@ namespace WebApi.Services
                 _customMarket.ControlPanel,
                 _customMarket.Tcreport,
                 _customMarket.TravelCrm,
+                _customMarket.AdUser,
+                _customMarket.ResponsibleName,
+                _customMarket.ResponsibleLastName,
                 CustomMarketDetailResponses
             );
         }
@@ -343,8 +366,14 @@ namespace WebApi.Services
             _customMarket.TestMarket = customMarket.TestMarket;
             _customMarket.ControlPanel = customMarket.ControlPanel;
             _customMarket.TravelCrm = customMarket.TravelCrm;
+            _customMarket.AdUser = customMarket.AdUser;
+            _customMarket.ResponsibleName = customMarket.ResponsibleName;
+            _customMarket.ResponsibleLastName = customMarket.ResponsibleLastName;
 
             _context.CustomMarkets.Add(_customMarket);
+
+            _context.SaveChanges();
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} creó el mercado {_customMarket.Description}", UserLogged.userLogged.Usuario, _context, _customMarket.Code);
             _context.SaveChanges();
 
             return _customMarket;
@@ -373,6 +402,9 @@ namespace WebApi.Services
             _customMarket.TestMarket = customMarket.TestMarket;
             _customMarket.ControlPanel = customMarket.ControlPanel;
             _customMarket.TravelCrm = customMarket.TravelCrm;
+            _customMarket.AdUser = customMarket.AdUser;
+            _customMarket.ResponsibleName = customMarket.ResponsibleName;
+            _customMarket.ResponsibleLastName = customMarket.ResponsibleLastName;
 
             if (customMarket.CustomMarketDetail != null)
             {
@@ -451,6 +483,7 @@ namespace WebApi.Services
             }
 
             _context.Entry(_customMarket).State = EntityState.Modified;
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} modificó el mercado {_customMarket.Description}", UserLogged.userLogged.Usuario, _context, _customMarket.Code);
             _context.SaveChanges();
 
             return this.GetByCode(_customMarket.Code);
@@ -550,6 +583,7 @@ namespace WebApi.Services
             }
 
             _context.Entry(_copyCustomMarket).State = EntityState.Modified;
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} clonó el mercado de origen {_customMarket.Description} en el mercado {_copyCustomMarket.Description}", UserLogged.userLogged.Usuario, _context, _copyCustomMarket.Code);
             _context.SaveChanges();
 
             return this.GetByCode(_copyCustomMarket.Code);
@@ -585,6 +619,8 @@ namespace WebApi.Services
                     _context.CustomMarketGroups.Remove(cmg);
                 }
             }
+            _context.Database.ExecuteSqlRaw($"DELETE customMarketPharmaceuticalForm WHERE customMarketCode = {customMarketCode}");
+
 
 
             var _productMarkets = _context.ProductMarkets
@@ -599,15 +635,202 @@ namespace WebApi.Services
                 }
             }
             _context.CustomMarkets.Remove(_customMarket);
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario}  borró el mercado", UserLogged.userLogged.Usuario, _context, customMarketCode);
             return _context.SaveChanges();
         }
 
         public IEnumerable<Object> GetPreviewByCode(int customMarketCode)
         {
+
             return _context.CustomMarketPreviews
                 .FromSqlRaw("EXEC [CustomMarketPreviewGet] " + customMarketCode.ToString())
                 .ToList();
         }
+
+        public async Task<MarketDetailResult> GetMarketDetailHistoricJsonAsync(int customMarketCode)
+        {
+            try
+            {
+                var parameter = new Microsoft.Data.SqlClient.SqlParameter("@customMarketCode", customMarketCode);
+
+                var jsonResult = await _context.Set<JsonResult>()
+                    .FromSqlRaw("SELECT dbo.fn_GetMarketDetailHistoric_JSON(@customMarketCode) AS JsonData", parameter)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync();
+
+                if (jsonResult == null || string.IsNullOrEmpty(jsonResult.JsonData))
+                {
+                    throw new Exception("No data returned from the SQL function.");
+                }
+
+                var marketDetailResult = JsonSerializer.Deserialize<MarketDetailResult>(jsonResult.JsonData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                return marketDetailResult;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<List<CustomMarketVersionHistoricModel>> GetMarketDetailHistoricByCustomMarketCode(int customMarketCode)
+        {
+            try
+            {
+                var result = _context.CustomMarketVersionHistorics.Where(e => e.CustomMarketCode == customMarketCode)
+                               .Include(e => e.SignedUserNavigation)
+                               .Select(x => new CustomMarketVersionHistoricModel
+                               {
+                                   Code = x.Code,
+                                   VersionDate = x.VersionDate,
+                                   Name = x.SignedUserNavigation.Usuario
+                                   
+
+                               })
+                               .ToList();
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("An error occurred while retrieving custom market details.", ex);
+            }
+        }
+        
+
+            public async Task<List<ProductDetail>> GetLastSignedPreviewHistoricByCustomMarketCode(int code)
+        {
+            var productDetails = new List<ProductDetail>();
+
+            try
+            {
+                var connectionString = _context.Database.GetConnectionString();
+
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+
+                    using (var command = new SqlCommand("[dbo].[CustomMarketPreviewGetLastSigned]", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@customMarketCode", code);
+
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                var productDetail = new ProductDetail
+                                {
+                                    ID = reader.GetInt32(reader.GetOrdinal("ID")),
+                                    ProductCode = reader.GetInt32(reader.GetOrdinal("ProductCode")),
+                                    Modifier = (decimal)reader.GetDouble(reader.GetOrdinal("Modifier")),
+                                    INTEmodifier = (decimal)reader.GetDouble(reader.GetOrdinal("INTEmodifier")),
+                                    OwnProduct = reader.GetBoolean(reader.GetOrdinal("OwnProduct")),
+                                    EntityDesc = reader.GetString(reader.GetOrdinal("EntityDesc")),
+                                    EntityID = reader.GetInt32(reader.GetOrdinal("EntityID")),
+                                    ProductPresentationDescription = reader.GetString(reader.GetOrdinal("ProductPresentationDescription")),
+                                    ProductPresentationCode = reader.GetInt32(reader.GetOrdinal("ProductPresentationCode")),
+                                    ProductDescription = reader.GetString(reader.GetOrdinal("ProductDescription")),
+                                    LabDescription = reader.GetString(reader.GetOrdinal("LabDescription")),
+                                    LabCode = reader.GetInt32(reader.GetOrdinal("LabCode")),
+                                    TCDescription = reader.GetString(reader.GetOrdinal("TCDescription")),
+                                    TCCode = reader.GetString(reader.GetOrdinal("TCCode")),
+                                    ClassCode = reader.IsDBNull(reader.GetOrdinal("ClassCode")) == true ? 0 : reader.GetInt32(reader.GetOrdinal("ClassCode")) ,
+                                    PFCode = reader.IsDBNull(reader.GetOrdinal("PFCode")) == true ? null : reader.GetString(reader.GetOrdinal("PFCode")),
+                                    PFDescription = reader.IsDBNull(reader.GetOrdinal("PFDescription")) == true ? null : reader.GetString(reader.GetOrdinal("PFDescription")),
+                                    Pattern = reader.GetString(reader.GetOrdinal("Pattern")),
+                                    EnsureVisible = reader.GetInt32(reader.GetOrdinal("EnsureVisible")),
+                                    Resume = reader.GetInt32(reader.GetOrdinal("Resume")),
+                                    Expand = reader.GetInt32(reader.GetOrdinal("Expand")),
+                                    Graph = reader.GetInt32(reader.GetOrdinal("Graph")),
+                                    ItemCondition = reader.GetInt32(reader.GetOrdinal("ItemCondition")),
+                                    Orden = reader.GetInt32(reader.GetOrdinal("Orden")),
+                                    Drug = reader.GetString(reader.GetOrdinal("Drug")),
+                                    BusinessUnit = reader.GetString(reader.GetOrdinal("BusinessUnit"))
+                                };
+
+                                productDetails.Add(productDetail);
+                            }
+                        }
+                    }
+
+                    await connection.CloseAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("An error occurred while retrieving custom market details.", ex);
+            }
+
+            return productDetails;
+        }
+        public async Task<List<ProductDetail>> GetMarketPreviewHistoricByCustomMarketCode(int versionCode)
+        {
+            var productDetails = new List<ProductDetail>();
+
+            try
+            {
+                var connectionString = _context.Database.GetConnectionString();
+
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+
+                    using (var command = new SqlCommand("[dbo].[CustomMarketPreviewGetHistoric]", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@versionCode", versionCode);
+
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                var productDetail = new ProductDetail
+                                {
+                                    ID = reader.GetInt32(reader.GetOrdinal("ID")),
+                                    ProductCode = reader.GetInt32(reader.GetOrdinal("ProductCode")),
+                                    Modifier = (decimal)reader.GetDouble(reader.GetOrdinal("Modifier")),
+                                    INTEmodifier = (decimal)reader.GetDouble(reader.GetOrdinal("INTEmodifier")),
+                                    OwnProduct = reader.GetBoolean(reader.GetOrdinal("OwnProduct")),
+                                    EntityDesc = reader.GetString(reader.GetOrdinal("EntityDesc")),
+                                    EntityID = reader.GetInt32(reader.GetOrdinal("EntityID")),
+                                    ProductPresentationDescription = reader.GetString(reader.GetOrdinal("ProductPresentationDescription")),
+                                    ProductPresentationCode = reader.GetInt32(reader.GetOrdinal("ProductPresentationCode")),
+                                    ProductDescription = reader.GetString(reader.GetOrdinal("ProductDescription")),
+                                    LabDescription = reader.GetString(reader.GetOrdinal("LabDescription")),
+                                    LabCode = reader.GetInt32(reader.GetOrdinal("LabCode")),
+                                    TCDescription = reader.GetString(reader.GetOrdinal("TCDescription")),
+                                    TCCode = reader.GetString(reader.GetOrdinal("TCCode")),
+                                    ClassCode = reader.GetInt32(reader.GetOrdinal("ClassCode")),
+                                    PFCode = reader.GetString(reader.GetOrdinal("PFCode")),
+                                    PFDescription = reader.GetString(reader.GetOrdinal("PFDescription")),
+                                    Pattern = reader.GetString(reader.GetOrdinal("Pattern")),
+                                    EnsureVisible = reader.GetInt32(reader.GetOrdinal("EnsureVisible")),
+                                    Resume = reader.GetInt32(reader.GetOrdinal("Resume")),
+                                    Expand = reader.GetInt32(reader.GetOrdinal("Expand")),
+                                    Graph = reader.GetInt32(reader.GetOrdinal("Graph")),
+                                    ItemCondition = reader.GetInt32(reader.GetOrdinal("ItemCondition")),
+                                    Orden = reader.GetInt32(reader.GetOrdinal("Orden")),
+                                    Drug = reader.GetString(reader.GetOrdinal("Drug")),
+                                    BusinessUnit = reader.GetString(reader.GetOrdinal("BusinessUnit"))
+                                };
+
+                                productDetails.Add(productDetail);
+                            }
+                        }
+                    }
+
+                    await connection.CloseAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("An error occurred while retrieving custom market details.", ex);
+            }
+
+            return productDetails;
+        }
+
+
 
         private bool hasCustomMarketAssignDetailCustomMarket(int? customMarketCode)
         {
@@ -692,7 +915,7 @@ namespace WebApi.Services
                              LineDescription = cm.LineDescription,
                              CustomMarketCode = cm.CustomMarketCode,
                              CustomMarketDescription = cm.CustomMarketDescription,
-                             CustomMarketOrder = cm.CustomMarketOrder,
+                             //CustomMarketOrder = cm.CustomMarketOrder,
                              CustomMarketTest = cm.CustomMarketTest,
                              Signed = cmad != null && cmad.SignedUser != null
                          };
@@ -718,7 +941,7 @@ namespace WebApi.Services
                                 {
                                     CustomMarketCode = cm.CustomMarketCode,
                                     CustomMarketDescription = cm.CustomMarketDescription,
-                                    CustomMarketOrder = cm.CustomMarketOrder,
+                                    //CustomMarketOrder = cm.CustomMarketOrder,
                                     CustomMarketTest = cm.CustomMarketTest,
                                     Signed = cm.Signed
                                 })

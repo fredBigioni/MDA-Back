@@ -4,6 +4,8 @@ using WebApi.Services;
 using WebApi.Models;
 using Microsoft.AspNetCore.Http;
 using System;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace WebApi.Controllers
 {
@@ -30,16 +32,28 @@ namespace WebApi.Controllers
 
         [AllowAnonymous]
         [HttpPost("authenticate")]
-        public IActionResult Authenticate([FromBody] AuthenticateRequest model)
+        public async Task<IActionResult> Authenticate([FromBody] AdAuthenticateRequest model)
         {
-            var response = _userService.Authenticate(model, ipAddress());
+            try
+            {
+                var response = await _userService.Authenticate(model, ipAddress());
 
-            if (response == null)
-                return BadRequest(new { message = "Username or password is incorrect" });
+                if (response == null)
+                    return BadRequest(new { message = "Username or password is incorrect" });
 
-            setTokenCookie(response.RefreshToken);
+                setTokenCookie(response.RefreshToken);
 
-            return Ok(response);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "Ocurrió un error interno en el servicio de autenticación.",
+                    error = ex.Message,
+                    stackTrace = ex.StackTrace
+                });
+            }
         }
 
         [AllowAnonymous]
@@ -78,8 +92,16 @@ namespace WebApi.Controllers
         [HttpGet("GetAll")]
         public IActionResult GetAll()
         {
-            var users = _userService.GetAll();
-            return Ok(users);
+            try
+            {
+                var users = _userService.GetAll();
+                return Ok(users);
+            }
+            catch (Exception ex)
+            {
+                // Devuelve el mensaje de error completo al cliente
+                return StatusCode(500, "Internal server error: " + ex.Message + " | Inner Exception: " + ex.InnerException?.Message);
+            }
         }
 
         [HttpGet("{id}")]

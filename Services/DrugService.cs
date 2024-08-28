@@ -29,13 +29,16 @@ namespace WebApi.Services
     {
         private DataContext _context;
         private readonly AppSettings _appSettings;
+        private readonly ILoggerService _loggerService;
 
         public DrugService(
             DataContext context,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings,
+            ILoggerService loggerService)
         {
             _context = context;
             _appSettings = appSettings.Value;
+            _loggerService= loggerService;
         }
 
         public IEnumerable<Drug> GetAll()
@@ -92,6 +95,8 @@ namespace WebApi.Services
             _drugGroup.DrugGroupDetails = _drugGroupDetails;
 
             _context.DrugGroups.Add(_drugGroup);
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} creo el grupo de drogas {_drugGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+           
             _context.SaveChanges();
             return _drugGroup;
         }
@@ -123,6 +128,9 @@ namespace WebApi.Services
             _drugGroup.DrugGroupDetails = _drugGroupDetails;
 
             _context.Entry(_drugGroup).State = EntityState.Modified;
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} modificó el grupo de drogas {_drugGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+
+
             _context.SaveChanges();
             return _drugGroup;
         }  
@@ -160,6 +168,8 @@ namespace WebApi.Services
             }
 
             _context.DrugGroups.Remove(_drugGroup);
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} eliminó el grupo de drogas {_drugGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+
             return _context.SaveChanges();   
         }                             
     }

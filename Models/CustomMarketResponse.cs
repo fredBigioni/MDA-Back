@@ -23,11 +23,14 @@ namespace WebApi.Models
         public int? MarketClass { get; set; }
         public int? MarketFilter { get; set; }
         public int? MarketReference { get; set; }
-        public int Order { get; set; }
+        public int? Order { get; set; }
         public bool? ProductReport { get; set; }
         public bool? TcReport { get; set; }
         public bool TestMarket { get; set; }
         public bool? TravelCrm { get; set; }
+        public string AdUser { get; set; }
+        public string ResponsibleName { get; set; }
+        public string ResponsibleLastName { get; set; }
 
         [JsonPropertyName("customMarketDetail")]
         public virtual ICollection<CustomMarketDetailResponse> CustomMarketDetailResponses { get; set; }
@@ -43,12 +46,15 @@ namespace WebApi.Models
             int? marketClass,
             int? marketFilter,
             int? marketReference,
-            int order,
+            int? order,
             bool? porductReport,
             bool testMarket,
             bool? controlPanel,
             bool? tcReport,   
             bool? travelCrm,
+            string adUser,
+            string responsibleName,
+            string responsibleLastName,
             List<CustomMarketDetailResponse> customMarketDetailResponses)
         {
             Code = code;
@@ -70,6 +76,9 @@ namespace WebApi.Models
             ControlPanel = controlPanel;
             TcReport = tcReport;
             TravelCrm = travelCrm;
+            AdUser = adUser;
+            ResponsibleName = responsibleName;
+            ResponsibleLastName= responsibleLastName;
             CustomMarketDetailResponses = customMarketDetailResponses;
         }        
     }

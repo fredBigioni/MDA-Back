@@ -6,6 +6,9 @@ using WebApi.Models;
 using WebApi.Entities;
 using System;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using WebApi.Helpers;
+using System.Linq;
 
 namespace WebApi.Controllers
 {
@@ -188,6 +191,46 @@ namespace WebApi.Controllers
 
             return Ok(customMarket);
         }
+
+        //[HttpGet("historicpreviews/{code}")]
+        //public async Task<IActionResult> GetMarketDetail(int code)
+        //{
+        //    var result = await _customMarketService.GetMarketDetailHistoricJsonAsync(code);
+        //    return Ok(result);
+        //}
+
+        [HttpGet("historicpreviews/{code}")]
+        public ActionResult<IEnumerable<CustomMarketVersionHistoricModel>> GetAllDetails(int code)
+        {
+            try
+            {
+                var details = _customMarketService.GetMarketDetailHistoricByCustomMarketCode(code);
+                return Ok(details);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                return StatusCode(500, $"{ex.Message} - Internal server error");
+            }
+        }
+
+        [HttpGet("historicpreviewstoscreen/{versionCode}")]
+        public async Task<ActionResult<IEnumerable<ProductDetail>>> GetHistoricPreviewToScreen(int versionCode)
+        {
+            var customMarket = await _customMarketService.GetMarketPreviewHistoricByCustomMarketCode(versionCode);
+            if (customMarket == null || !customMarket.Any()) return NotFound();
+
+            return Ok(customMarket);
+        }
+        [HttpGet("lastsignpreviewstoscreen/{code}")]
+        public async Task<ActionResult<IEnumerable<ProductDetail>>> GetLastSignPreviewToScreen(int code)
+        {
+            var customMarket = await _customMarketService.GetLastSignedPreviewHistoricByCustomMarketCode(code);
+            if (customMarket == null || !customMarket.Any()) return NotFound();
+
+            return Ok(customMarket);
+        }
+
 
         [HttpDelete("{code}")]
         public IActionResult Delete(int code)

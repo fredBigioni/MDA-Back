@@ -32,13 +32,16 @@ namespace WebApi.Services
     {
         private DataContext _context;
         private readonly AppSettings _appSettings;
+        private readonly ILoggerService _loggerService;
 
         public ProductService(
             DataContext context,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings,
+            ILoggerService loggerService)
         {
             _context = context;
             _appSettings = appSettings.Value;
+            _loggerService = loggerService;
         }
 
         public IEnumerable<Object> GetAllProducts()
@@ -171,6 +174,9 @@ namespace WebApi.Services
             _productGroup.ProductGroupDetails = _productGroupDetails;
 
             _context.ProductGroups.Add(_productGroup);
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} creó el grupo de productos {_productGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+
+
             _context.SaveChanges();
             return _productGroup;
         }
@@ -219,6 +225,9 @@ namespace WebApi.Services
             _productGroup.ProductGroupDetails = _productGroupDetails;
 
             _context.Entry(_productGroup).State = EntityState.Modified;
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} modificó el grupo de productos {_productGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+
+
             _context.SaveChanges();
             return _productGroup;
         }        
@@ -255,6 +264,9 @@ namespace WebApi.Services
                 }
             }                
             _context.ProductGroups.Remove(_productGroup);
+            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} eliminó el grupo de productos {_productGroup.Description}", UserLogged.userLogged.Usuario, _context, null);
+
+
             return _context.SaveChanges();   
         }
     }

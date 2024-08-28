@@ -37,7 +37,7 @@ namespace WebApi.Helpers
         public virtual DbSet<ProductType> ProductTypes { get; set; }
         public virtual DbSet<TherapeuticalClass> TherapeuticalClasses { get; set; }
         public virtual DbSet<UserPermission> UserPermissions { get; set; }
-
+        public virtual DbSet<JsonResult> JsonResults { get; set; }
         public virtual DbSet<CustomMarketTree> CustomMarketTrees { get; set; }
         public virtual DbSet<DrugComponent> DrugComponents { get; set; }
         public virtual DbSet<LaboratoryComponent> LaboratoryComponents { get; set; }
@@ -50,6 +50,9 @@ namespace WebApi.Helpers
         public virtual DbSet<Period> Periods { get; set; }
         public virtual DbSet<CustomMarketActualDefinition> CustomMarketActualDefinitions { get; set; }
         public virtual DbSet<CustomMarketPreview> CustomMarketPreviews { get; set; }
+        public virtual DbSet<Log> Logs { get; set; }
+        public virtual DbSet<CustomMarketVersionHistoric> CustomMarketVersionHistorics { get; set; }
+        public virtual DbSet<CustomMarketResultVersionHistoric> CustomMarketResultVersionHistorics { get; set; }
 
 
         public DataContext(DbContextOptions<DataContext> options) : base(options) { }
@@ -158,6 +161,12 @@ namespace WebApi.Helpers
                 entity.Property(e => e.MarketFilter).HasColumnName("marketFilter");
 
                 entity.Property(e => e.Order).HasColumnName("order");
+
+                entity.Property(e => e.AdUser).HasColumnName("adUser");
+
+                entity.Property(e => e.ResponsibleName).HasColumnName("responsibleName");
+
+                entity.Property(e => e.ResponsibleLastName).HasColumnName("responsibleLastName");
 
                 entity.Property(e => e.ProductReport)
                     .IsRequired()
@@ -924,7 +933,7 @@ namespace WebApi.Helpers
                 entity.Property(e => e.LineDescription).HasColumnName("lineDescription");
                 entity.Property(e => e.CustomMarketCode).HasColumnName("customMarketCode");
                 entity.Property(e => e.CustomMarketDescription).HasColumnName("customMarketDescription");
-                entity.Property(e => e.CustomMarketOrder).HasColumnName("customMarketOrder");
+                //entity.Property(e => e.CustomMarketOrder).HasColumnName("customMarketOrder");
                 entity.Property(e => e.CustomMarketTest).HasColumnName("customMarketTest");
             });
 
@@ -1129,6 +1138,12 @@ namespace WebApi.Helpers
 
                 entity.Property(e => e.SignedUser).HasColumnName("signedUser");
 
+                entity.Property(e => e.AdUser).HasColumnName("adUser");
+
+                entity.Property(e => e.ResponsibleName).HasColumnName("responsibleName");
+
+                entity.Property(e => e.ResponsibleLastName).HasColumnName("responsibleLastName");
+
                 entity.Property(e => e.Stamp)
                     .HasMaxLength(8)
                     .HasColumnName("stamp")
@@ -1151,6 +1166,308 @@ namespace WebApi.Helpers
             {
                 entity.HasNoKey();
                 entity.ToView(null);
+            });
+
+            modelBuilder.Entity<JsonResult>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView(null);
+            });
+
+            modelBuilder.Entity<Log>(entity =>
+            {
+                entity.HasKey(e => e.Code);
+
+                entity.ToTable("Logs", "dbo");
+
+                entity.Property(e => e.Code).HasColumnName("code");
+
+                entity.Property(e => e.Type).HasColumnName("Type");
+
+                entity.Property(e => e.Description).HasColumnName("Description");
+
+                entity.Property(e => e.UserLog).HasColumnName("UserLog");
+
+                entity.Property(e => e.Date).HasColumnName("date");
+
+                entity.Property(e => e.CustomMarketCode).HasColumnName("customMarketCode");
+
+            });
+
+            modelBuilder.Entity<CustomMarketVersionHistoric>(entity =>
+            {
+                entity.HasKey(e => e.Code);
+
+                entity.ToTable("customMarketVersionHistoric", "dbo");
+
+
+                entity.Property(e => e.Code)
+                    .IsRequired()
+                    .UseIdentityColumn();
+
+                entity.Property(e => e.CustomMarketCode)
+                    .IsRequired();
+
+                entity.Property(e => e.LineCode)
+                    .IsRequired(false);
+
+                entity.Property(e => e.Description)
+                    .IsRequired()
+                    .HasMaxLength(150);
+
+                entity.Property(e => e.Order)
+                    .IsRequired(false);
+
+                entity.Property(e => e.ProductReport)
+                    .IsRequired();
+
+                entity.Property(e => e.DrugReport)
+                    .IsRequired();
+
+                entity.Property(e => e.IsOTC)
+                    .IsRequired();
+
+                entity.Property(e => e.Header)
+                    .HasMaxLength(500)
+                    .IsRequired(false);
+
+                entity.Property(e => e.Footer)
+                    .HasMaxLength(500)
+                    .IsRequired(false);
+
+                entity.Property(e => e.MarketFilter)
+                    .IsRequired(false);
+
+                entity.Property(e => e.TestMarket)
+                    .IsRequired();
+
+                entity.Property(e => e.ControlPanel)
+                    .IsRequired();
+
+                entity.Property(e => e.LabReport)
+                    .IsRequired(false);
+
+                entity.Property(e => e.TCReport)
+                    .IsRequired(false);
+
+                entity.Property(e => e.Status)
+                    .HasMaxLength(1)
+                    .IsRequired(false);
+
+                entity.Property(e => e.Stamp)
+                    .HasColumnType("binary(50)")
+                    .IsRequired(false);
+
+                entity.Property(e => e.MarketClass)
+                    .IsRequired(false);
+
+                entity.Property(e => e.MarketReference)
+                    .IsRequired(false);
+
+                entity.Property(e => e.TravelCrm)
+                    .IsRequired(false);
+
+                entity.Property(e => e.VersionDate)
+                    .IsRequired();
+
+                entity.Property(e => e.SignedUser)
+                    .IsRequired(false);
+
+                entity.Property(e => e.AdUser)
+                    .HasColumnType("varchar(max)")
+                    .IsRequired(false);
+
+                entity.Property(e => e.ResponsibleName)
+                    .HasColumnType("varchar(max)")
+                    .IsRequired(false);
+
+                entity.Property(e => e.ResponsibleLastName)
+                    .HasColumnType("varchar(max)")
+                    .IsRequired(false);
+
+
+                entity.HasOne(e => e.SignedUserNavigation)
+               .WithMany()
+               .HasForeignKey(e => e.SignedUser)
+               .HasConstraintName("FK_CustomMarketVersionHistoric_User");
+            });
+
+            modelBuilder.Entity<CustomMarketResultVersionHistoric>(entity =>
+            {
+                entity.ToTable("customMarketResultVersionHistoric","dbo");
+
+                entity.HasKey(e => e.VersionCode);
+
+                entity.Property(e => e.VersionCode)
+                    .IsRequired();
+
+                entity.Property(e => e.LineCode);
+
+                entity.Property(e => e.LineDescription)
+                    .IsRequired()
+                    .HasMaxLength(150);
+
+                entity.Property(e => e.CustomMarketCode)
+                    .IsRequired();
+
+                entity.Property(e => e.CustomMarketDescription)
+                    .IsRequired()
+                    .HasMaxLength(150);
+
+                entity.Property(e => e.ProductPresentationCode)
+                    .IsRequired();
+
+                entity.Property(e => e.ProductPresentationDescription)
+                    .IsRequired()
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.EAN)
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.ProductCode);
+
+                entity.Property(e => e.ProductDescription)
+                    .IsRequired()
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.OwnProduct);
+
+                entity.Property(e => e.LabCode)
+                    .IsRequired();
+
+                entity.Property(e => e.LabAbrev)
+                    .IsRequired()
+                    .HasMaxLength(25);
+
+                entity.Property(e => e.LabDescription)
+                    .IsRequired()
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.PPG)
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.MercadoMarca)
+                    .IsRequired()
+                    .HasMaxLength(150);
+
+                entity.Property(e => e.Marca)
+                    .IsRequired()
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.TC)
+                    .IsRequired()
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.TCDescription)
+                    .IsRequired()
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.FF)
+                    .IsRequired()
+                    .HasMaxLength(10);
+
+                entity.Property(e => e.FFDewcription)
+                    .IsRequired()
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.Genero)
+                    .IsRequired()
+                    .HasMaxLength(25);
+
+                entity.Property(e => e.GeneroDesc)
+                    .IsRequired()
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.LanzamientoProd);
+
+                entity.Property(e => e.LanzamientoPres);
+
+                entity.Property(e => e.Drugs)
+                    .HasMaxLength(1000);
+
+                entity.Property(e => e.Modifier);
+
+                entity.Property(e => e.INTEModifier);
+
+                entity.Property(e => e.TAM1_Units);
+                entity.Property(e => e.TAM1_Vals);
+                entity.Property(e => e.TAM2_Units);
+                entity.Property(e => e.TAM2_Vals);
+                entity.Property(e => e.TAM3_Units);
+                entity.Property(e => e.TAM3_Vals);
+                entity.Property(e => e.TAM4_Units);
+                entity.Property(e => e.TAM4_Vals);
+                entity.Property(e => e.TAM5_Units);
+                entity.Property(e => e.TAM5_Vals);
+                entity.Property(e => e.YTD_Units);
+                entity.Property(e => e.YTD_Vals);
+                entity.Property(e => e.YTDAA_Units);
+                entity.Property(e => e.YTDAA_Vals);
+                entity.Property(e => e.TRIM_Units);
+                entity.Property(e => e.TRIM_Vals);
+                entity.Property(e => e.TRIM_IA_Units);
+                entity.Property(e => e.TRIM_IA_Vals);
+                entity.Property(e => e.TRIM_AA_Units);
+                entity.Property(e => e.TRIM_AA_Vals);
+                entity.Property(e => e.M1_Units);
+                entity.Property(e => e.M1_Vals);
+                entity.Property(e => e.M2_Units);
+                entity.Property(e => e.M2_Vals);
+                entity.Property(e => e.M3_Units);
+                entity.Property(e => e.M3_Vals);
+                entity.Property(e => e.M4_Units);
+                entity.Property(e => e.M4_Vals);
+                entity.Property(e => e.M5_Units);
+                entity.Property(e => e.M5_Vals);
+                entity.Property(e => e.M6_Units);
+                entity.Property(e => e.M6_Vals);
+                entity.Property(e => e.M7_Units);
+                entity.Property(e => e.M7_Vals);
+                entity.Property(e => e.M8_Units);
+                entity.Property(e => e.M8_Vals);
+                entity.Property(e => e.M9_Units);
+                entity.Property(e => e.M9_Vals);
+                entity.Property(e => e.M10_Units);
+                entity.Property(e => e.M10_Vals);
+                entity.Property(e => e.M11_Units);
+                entity.Property(e => e.M11_Vals);
+                entity.Property(e => e.M12_Units);
+                entity.Property(e => e.M12_Vals);
+                entity.Property(e => e.M13_Units);
+                entity.Property(e => e.M13_Vals);
+                entity.Property(e => e.M14_Units);
+                entity.Property(e => e.M14_Vals);
+                entity.Property(e => e.M15_Units);
+                entity.Property(e => e.M15_Vals);
+                entity.Property(e => e.M16_Units);
+                entity.Property(e => e.M16_Vals);
+                entity.Property(e => e.M17_Units);
+                entity.Property(e => e.M17_Vals);
+                entity.Property(e => e.M18_Units);
+                entity.Property(e => e.M18_Vals);
+                entity.Property(e => e.M19_Units);
+                entity.Property(e => e.M19_Vals);
+                entity.Property(e => e.M20_Units);
+                entity.Property(e => e.M20_Vals);
+                entity.Property(e => e.M21_Units);
+                entity.Property(e => e.M21_Vals);
+                entity.Property(e => e.M22_Units);
+                entity.Property(e => e.M22_Vals);
+                entity.Property(e => e.M23_Units);
+                entity.Property(e => e.M23_Vals);
+                entity.Property(e => e.M24_Units);
+                entity.Property(e => e.M24_Vals);
+
+                entity.Property(e => e.TravelCrm);
+
+                entity.Property(e => e.AdUser)
+                    .HasColumnType("varchar(max)");
+
+                entity.Property(e => e.ResponsibleName)
+                    .HasColumnType("varchar(max)");
+
+                entity.Property(e => e.ResponsibleLastName)
+                    .HasColumnType("varchar(max)");
             });
 
         }

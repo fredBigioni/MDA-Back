@@ -21,7 +21,7 @@ namespace WebApi.Controllers
         public IActionResult GetAll()
         {
             var _productTypes = _productTypeService.GetAll();
-            return Ok(_productTypes);
+            return Ok(_productTypes);   
         }                     
     }
 }

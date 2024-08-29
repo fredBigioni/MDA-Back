@@ -101,7 +101,7 @@ namespace WebApi.Services
                     if (!cm.TestMarket)
                     {
 
-                        if(cmd != null)
+                        if(cmd.Count() != 0)
                         {
 
                             //Ejecutar el SP de firma
@@ -655,10 +655,22 @@ namespace WebApi.Services
 
         public IEnumerable<Object> GetPreviewByCode(int customMarketCode)
         {
+            var originalTimeout = _context.Database.GetCommandTimeout();
 
-            return _context.CustomMarketPreviews
-                .FromSqlRaw("EXEC [CustomMarketPreviewGet] " + customMarketCode.ToString())
-                .ToList();
+            _context.Database.SetCommandTimeout(60);
+            try
+            {
+                return _context.CustomMarketPreviews
+                    .FromSqlRaw("EXEC [CustomMarketPreviewGet] {0}", customMarketCode)
+                    .ToList();
+
+
+            }
+            finally
+            {
+                // Restablece el CommandTimeout original
+                _context.Database.SetCommandTimeout(originalTimeout);
+            }
         }
 
         public async Task<MarketDetailResult> GetMarketDetailHistoricJsonAsync(int customMarketCode)
@@ -701,6 +713,7 @@ namespace WebApi.Services
                                    
 
                                })
+                                .OrderByDescending(x => x.VersionDate)
                                .ToList();
                 return result;
             }

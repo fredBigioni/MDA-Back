@@ -95,33 +95,35 @@ namespace WebApi.Services
             try
             {
                 var cm = await _context.CustomMarkets.SingleOrDefaultAsync(c => c.Code == sign.CustomMarketCode);
-                var cmd = await _context.CustomMarketDetails.SingleOrDefaultAsync(c => c.CustomMarketCode == sign.CustomMarketCode);
+                var cmd = GetPreviewByCode(sign.CustomMarketCode);
                 if (cm != null)
                 {
                     if (!cm.TestMarket)
                     {
+
                         if(cmd != null)
                         {
+
                             //Ejecutar el SP de firma
                             await _context.SP_SignMarket(sign);
 
                             response.Message = string.Format("Mercado firmado correctamente");
                             response.Status = true;
 
-                            if (UserLogged.userLogged.Usuario == null)
-                            {
-                                response.Message = string.Format("Session Expirada");
-                                response.Status = false;
+                            //if (UserLogged.userLogged.Usuario == null)
+                            //{
+                            //    response.Message = string.Format("Session Expirada");
+                            //    response.Status = false;
 
-                                return response;
-                            }
+                            //    return response;
+                            //}
                             _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} ha firmado el mercado {cm.Description}", UserLogged.userLogged.Usuario, _context, cm.Code);
                             _context.SaveChanges();
                         }
 
                             else
                             {
-                            response.Message = string.Format("No se puede firmar un mercado vacio");
+                            response.Message = string.Format("No se puede firmar un mercado sin presentaciones");
                             response.Status = false;
                         }
                         

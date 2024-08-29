@@ -192,14 +192,22 @@ namespace WebApi.Controllers
             return Ok(customMarket);
         }
 
-        //[HttpGet("historicpreviews/{code}")]
-        //public async Task<IActionResult> GetMarketDetail(int code)
-        //{
-        //    var result = await _customMarketService.GetMarketDetailHistoricJsonAsync(code);
-        //    return Ok(result);
-        //}
+        [HttpGet("actualpreview/{code}")]
+        public async Task<IActionResult> GetMarketDetail(int code)
+        {
+            try
+            {
+                var result = await _customMarketService.GetMarketDetailLastSignByCustomMarketCode(code);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"{ex.Message} - Internal server error");
+            }
+        }
+        
 
-        [HttpGet("historicpreviews/{code}")]
+    [HttpGet("historicpreviews/{code}")]
         public ActionResult<IEnumerable<CustomMarketVersionHistoricModel>> GetAllDetails(int code)
         {
             try

@@ -33,6 +33,7 @@ namespace WebApi.Services
         IEnumerable<Object> GetTree();
         IEnumerable<Object> GetTree(User user);
         Task<List<CustomMarketVersionHistoricModel>> GetMarketDetailHistoricByCustomMarketCode(int customMarketCode);
+        Task<List<CustomMarketVersionHistoricModel>> GetMarketDetailLastSignByCustomMarketCode(int customMarketCode);
         Task<List<ProductDetail>> GetMarketPreviewHistoricByCustomMarketCode(int versionCode);
         Task<List<ProductDetail>> GetLastSignedPreviewHistoricByCustomMarketCode(int code);
 
@@ -94,25 +95,36 @@ namespace WebApi.Services
             try
             {
                 var cm = await _context.CustomMarkets.SingleOrDefaultAsync(c => c.Code == sign.CustomMarketCode);
+                var cmd = await _context.CustomMarketDetails.SingleOrDefaultAsync(c => c.CustomMarketCode == sign.CustomMarketCode);
                 if (cm != null)
                 {
                     if (!cm.TestMarket)
                     {
-                        //Ejecutar el SP de firma
-                        await _context.SP_SignMarket(sign);
-
-                        response.Message = string.Format("Mercado firmado correctamente");
-                        response.Status = true;
-
-                        if(UserLogged.userLogged.Usuario == null)
+                        if(cmd != null)
                         {
-                            response.Message = string.Format("Session Expirada");
-                            response.Status = false;
+                            //Ejecutar el SP de firma
+                            await _context.SP_SignMarket(sign);
 
-                            return response;
+                            response.Message = string.Format("Mercado firmado correctamente");
+                            response.Status = true;
+
+                            if (UserLogged.userLogged.Usuario == null)
+                            {
+                                response.Message = string.Format("Session Expirada");
+                                response.Status = false;
+
+                                return response;
+                            }
+                            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} ha firmado el mercado {cm.Description}", UserLogged.userLogged.Usuario, _context, cm.Code);
+                            _context.SaveChanges();
                         }
-                        _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} ha firmado el mercado {cm.Description}",UserLogged.userLogged.Usuario,_context,cm.Code);
-                        _context.SaveChanges();
+
+                            else
+                            {
+                            response.Message = string.Format("No se puede firmar un mercado vacio");
+                            response.Status = false;
+                        }
+                        
                     }
                     else
                     {
@@ -695,9 +707,28 @@ namespace WebApi.Services
                 throw new ApplicationException("An error occurred while retrieving custom market details.", ex);
             }
         }
-        
+        public async Task<List<CustomMarketVersionHistoricModel>> GetMarketDetailLastSignByCustomMarketCode(int customMarketCode)
+        {
+            try
+            {
+                var result = _context.CustomMarketActualDefinitions.Where(e => e.CustomMarketCode == customMarketCode)
+                               .Select(x => new CustomMarketVersionHistoricModel
+                               {
+                                   Code = x.CustomMarketCode,
+                                   VersionDate = x.VersionDate
 
-            public async Task<List<ProductDetail>> GetLastSignedPreviewHistoricByCustomMarketCode(int code)
+                               })
+                               .ToList();
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("An error occurred while retrieving custom market details.", ex);
+            }
+        }
+
+
+        public async Task<List<ProductDetail>> GetLastSignedPreviewHistoricByCustomMarketCode(int code)
         {
             var productDetails = new List<ProductDetail>();
 

@@ -94,8 +94,10 @@ namespace WebApi.Services
             var response = new Response<string>();
             try
             {
+                DateTime manualDate = new DateTime(2024, 9, 5);
                 var cm = await _context.CustomMarkets.SingleOrDefaultAsync(c => c.Code == sign.CustomMarketCode);
                 var cmd = GetPreviewByCode(sign.CustomMarketCode);
+                var cmad = await _context.CustomMarketActualDefinitions.SingleOrDefaultAsync(x => x.CustomMarketCode == sign.CustomMarketCode);
                 if (cm != null)
                 {
                     if (!cm.TestMarket)
@@ -104,21 +106,30 @@ namespace WebApi.Services
                         if(cmd.Count() != 0)
                         {
 
+                            if(cmad.SignedUser == 23 && cmad.VersionDate.Date <= manualDate.Date)
+                            {
+                                response.Message = string.Format("No se puede firmar un mercado que pertence a un periodo anterior");
+                                response.Status = false;
+                            }
+                            else
+                            {
+                                await _context.SP_SignMarket(sign);
+
+                                response.Message = string.Format("Mercado firmado correctamente");
+                                response.Status = true;
+
+                                //if (UserLogged.userLogged.Usuario == null)
+                                //{
+                                //    response.Message = string.Format("Session Expirada");
+                                //    response.Status = false;
+
+                                //    return response;
+                                //}
+                                _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} ha firmado el mercado {cm.Description}", UserLogged.userLogged.Usuario, _context, cm.Code);
+                                _context.SaveChanges();
+                            }
                             //Ejecutar el SP de firma
-                            await _context.SP_SignMarket(sign);
-
-                            response.Message = string.Format("Mercado firmado correctamente");
-                            response.Status = true;
-
-                            //if (UserLogged.userLogged.Usuario == null)
-                            //{
-                            //    response.Message = string.Format("Session Expirada");
-                            //    response.Status = false;
-
-                            //    return response;
-                            //}
-                            _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} ha firmado el mercado {cm.Description}", UserLogged.userLogged.Usuario, _context, cm.Code);
-                            _context.SaveChanges();
+                           
                         }
 
                             else
@@ -160,15 +171,25 @@ namespace WebApi.Services
                 {
                     foreach (var cm in customMarkets)
                     {
+                        var cmd = GetPreviewByCode(cm.Code);
                         if (!cm.TestMarket)
                         {
-                            var sign = new SignMarketModel()
+                            if(cmd.Count() != 0)
                             {
-                                CustomMarketCode = cm.Code,
-                                SignedUser = signedUser
-                            };
-                            //Ejecutar el SP de firma
-                            await _context.SP_SignMarket(sign);
+                                var sign = new SignMarketModel()
+                                {
+                                    CustomMarketCode = cm.Code,
+                                    SignedUser = signedUser
+                                };
+                                //Ejecutar el SP de firma
+                                await _context.SP_SignMarket(sign);
+                            }
+                            else
+                            {
+                                response.Message += string.Format($"{cm.Description} no tiene presentaciones \n");
+                                response.Status = false;
+                            }
+                           
                         }
                         else
                         {
@@ -398,7 +419,15 @@ namespace WebApi.Services
             CustomMarket _customMarket = _context.CustomMarkets
                 .SingleOrDefault(x => x.Code == customMarketCode);
 
+            CustomMarketActualDefinition customMarketActualDefinition = _context.CustomMarketActualDefinitions.SingleOrDefault(x => x.CustomMarketCode== customMarketCode);
+
             if (_customMarket == null) return null;
+
+            if (customMarketActualDefinition != null)
+            {
+                customMarketActualDefinition.SignedUser = null;
+                _context.Entry(customMarketActualDefinition).State = EntityState.Modified;
+            }
 
             _customMarket.Description = customMarket.Description;
             _customMarket.DrugReport = customMarket.DrugReport;
@@ -499,6 +528,7 @@ namespace WebApi.Services
             _context.Entry(_customMarket).State = EntityState.Modified;
             _loggerService.LogMessage($"El usuario {UserLogged.userLogged.Usuario} modificó el mercado {_customMarket.Description}", UserLogged.userLogged.Usuario, _context, _customMarket.Code);
             _context.SaveChanges();
+
 
             return this.GetByCode(_customMarket.Code);
         }
@@ -963,7 +993,9 @@ namespace WebApi.Services
                              CustomMarketDescription = cm.CustomMarketDescription,
                              //CustomMarketOrder = cm.CustomMarketOrder,
                              CustomMarketTest = cm.CustomMarketTest,
+                             SignedUser = cmad != null ? cmad.SignedUser : null,
                              Signed = cmad != null && cmad.SignedUser != null
+                             
                          };
 
             return result
@@ -989,7 +1021,8 @@ namespace WebApi.Services
                                     CustomMarketDescription = cm.CustomMarketDescription,
                                     //CustomMarketOrder = cm.CustomMarketOrder,
                                     CustomMarketTest = cm.CustomMarketTest,
-                                    Signed = cm.Signed
+                                    Signed = cm.Signed,
+                                    SignedUser = cm.SignedUser
                                 })
                                 .ToList()
                         })

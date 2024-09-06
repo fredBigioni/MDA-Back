@@ -106,7 +106,7 @@ namespace WebApi.Services
                         if(cmd.Count() != 0)
                         {
 
-                            if(cmad.SignedUser == 23 && cmad.VersionDate.Date <= manualDate.Date)
+                            if(cmad != null && cmad.SignedUser == 30 && cmad.VersionDate.Date <= manualDate.Date)
                             {
                                 response.Message = string.Format("No se puede firmar un mercado que pertence a un periodo anterior");
                                 response.Status = false;
@@ -167,22 +167,35 @@ namespace WebApi.Services
             try
             {
                 var customMarkets = await _context.CustomMarkets.Where(c => c.LineCode == lineCode).ToListAsync();
+                DateTime manualDate = new DateTime(2024, 9, 5);
+
                 if (customMarkets.Any())
                 {
                     foreach (var cm in customMarkets)
                     {
+                        var cmad = await _context.CustomMarketActualDefinitions.SingleOrDefaultAsync(x => x.CustomMarketCode == cm.Code);
+
                         var cmd = GetPreviewByCode(cm.Code);
                         if (!cm.TestMarket)
                         {
                             if(cmd.Count() != 0)
                             {
-                                var sign = new SignMarketModel()
+                                if (cmad != null && cmad.SignedUser == 30 && cmad.VersionDate.Date <= manualDate.Date)
                                 {
-                                    CustomMarketCode = cm.Code,
-                                    SignedUser = signedUser
-                                };
-                                //Ejecutar el SP de firma
-                                await _context.SP_SignMarket(sign);
+                                    response.Message += string.Format($"No se puede firmar {cm.Description} pertence a un periodo anterior \n");
+                                    response.Status = false;
+                                }
+                                else
+                                {
+                                    var sign = new SignMarketModel()
+                                    {
+                                        CustomMarketCode = cm.Code,
+                                        SignedUser = signedUser
+                                    };
+                                    //Ejecutar el SP de firma
+                                    await _context.SP_SignMarket(sign);
+                                }
+                                   
                             }
                             else
                             {

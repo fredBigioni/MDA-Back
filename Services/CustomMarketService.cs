@@ -92,12 +92,15 @@ namespace WebApi.Services
         public async Task<Response<string>> SignMarket(SignMarketModel sign)
         {
             var response = new Response<string>();
+            IQueryable<Parameter> sysParameters;
+            var canSignParameters = new Parameter();
             try
             {
-                DateTime manualDate = new DateTime(2024, 9, 5);
                 var cm = await _context.CustomMarkets.SingleOrDefaultAsync(c => c.Code == sign.CustomMarketCode);
                 var cmd = GetPreviewByCode(sign.CustomMarketCode);
                 var cmad = await _context.CustomMarketActualDefinitions.SingleOrDefaultAsync(x => x.CustomMarketCode == sign.CustomMarketCode);
+                sysParameters = _context.Parameters.Where(x => x.ParamName == "AUTOMATIC_SIGN_USER" && x.IntParamValue == cmad.SignedUser);
+                canSignParameters = await _context.Parameters.SingleOrDefaultAsync(x => x.ParamName == "CAN_SIGN");
                 if (cm != null)
                 {
                     if (!cm.TestMarket)
@@ -106,7 +109,7 @@ namespace WebApi.Services
                         if(cmd.Count() != 0)
                         {
 
-                            if(cmad != null && cmad.SignedUser == 30 && cmad.VersionDate.Date <= manualDate.Date)
+                            if (cmad != null && sysParameters.Any() && canSignParameters.IntParamValue != 1)
                             {
                                 response.Message = string.Format("No se puede firmar un mercado que pertence a un periodo anterior");
                                 response.Status = false;
@@ -162,25 +165,31 @@ namespace WebApi.Services
         public async Task<Response<string>> SignAllMarket(int lineCode, int signedUser)
         {
             var response = new Response<string>();
+            IQueryable<Parameter> sysParameters;
+            var canSignParameters = new Parameter();
+
             response.Message = string.Empty;
             response.Status = true;
             try
             {
                 var customMarkets = await _context.CustomMarkets.Where(c => c.LineCode == lineCode).ToListAsync();
-                DateTime manualDate = new DateTime(2024, 9, 5);
 
                 if (customMarkets.Any())
                 {
                     foreach (var cm in customMarkets)
                     {
-                        var cmad = await _context.CustomMarketActualDefinitions.SingleOrDefaultAsync(x => x.CustomMarketCode == cm.Code);
-
+                        var cmad = await _context.CustomMarketActualDefinitions.SingleOrDefaultAsync(x => x.CustomMarketCode == cm.Code);   
+                         
+                            sysParameters = _context.Parameters.Where(x => x.ParamName == "AUTOMATIC_SIGN_USER" && x.IntParamValue == cmad.SignedUser);
+                            canSignParameters = await _context.Parameters.SingleOrDefaultAsync(x => x.ParamName == "CAN_SIGN");                 
+                        
+                     
                         var cmd = GetPreviewByCode(cm.Code);
                         if (!cm.TestMarket)
                         {
                             if(cmd.Count() != 0)
                             {
-                                if (cmad != null && cmad.SignedUser == 30 && cmad.VersionDate.Date <= manualDate.Date)
+                                if (cmad != null && sysParameters.Any() && canSignParameters.IntParamValue != 1)
                                 {
                                     response.Message += string.Format($"No se puede firmar {cm.Description} pertence a un periodo anterior \n");
                                     response.Status = false;
@@ -700,7 +709,7 @@ namespace WebApi.Services
         {
             var originalTimeout = _context.Database.GetCommandTimeout();
 
-            _context.Database.SetCommandTimeout(60);
+            _context.Database.SetCommandTimeout(120);
             try
             {
                 return _context.CustomMarketPreviews

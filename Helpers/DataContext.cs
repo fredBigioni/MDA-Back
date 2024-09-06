@@ -53,13 +53,25 @@ namespace WebApi.Helpers
         public virtual DbSet<Log> Logs { get; set; }
         public virtual DbSet<CustomMarketVersionHistoric> CustomMarketVersionHistorics { get; set; }
         public virtual DbSet<CustomMarketResultVersionHistoric> CustomMarketResultVersionHistorics { get; set; }
+        public DbSet<Parameter> Parameters { get; set; }
 
 
         public DataContext(DbContextOptions<DataContext> options) : base(options) { }
 
         public virtual async Task<int> SP_SignMarket(SignMarketModel sign)
         {
-            return Database.ExecuteSqlRaw($"EXEC SignMarket @customMarketCode = {sign.CustomMarketCode} , @signedUser = {sign.SignedUser}");
+            var originalTimeout = Database.GetCommandTimeout();
+
+            try
+            {
+                Database.SetCommandTimeout(120);
+
+                return await Database.ExecuteSqlRawAsync($"EXEC SignMarket @customMarketCode = {sign.CustomMarketCode}, @signedUser = {sign.SignedUser}");
+            }
+            finally
+            {
+                Database.SetCommandTimeout(originalTimeout);
+            }
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -1468,6 +1480,23 @@ namespace WebApi.Helpers
 
                 entity.Property(e => e.ResponsibleLastName)
                     .HasColumnType("varchar(max)");
+            });
+
+            modelBuilder.Entity<Parameter>(entity =>
+            {
+                entity.ToTable("_parameter");
+
+                entity.HasKey(e => e.ParamName);
+
+                entity.Property(e => e.ParamName)
+                    .HasColumnName("paramName")
+                    .IsRequired();
+
+                entity.Property(e => e.IntParamValue)
+                    .HasColumnName("intParamValue");
+
+                entity.Property(e => e.StrParamValue)
+                    .HasColumnName("strParamValue");
             });
 
         }

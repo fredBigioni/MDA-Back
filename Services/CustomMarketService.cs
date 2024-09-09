@@ -438,17 +438,36 @@ namespace WebApi.Services
 
         public Object Update(int customMarketCode, CustomMarketRequest customMarket)
         {
+            var response = new Response<string>();
+            response.Message = string.Empty;
+            response.Status = true;
+
             CustomMarket _customMarket = _context.CustomMarkets
                 .SingleOrDefault(x => x.Code == customMarketCode);
 
             CustomMarketActualDefinition customMarketActualDefinition = _context.CustomMarketActualDefinitions.SingleOrDefault(x => x.CustomMarketCode== customMarketCode);
 
+            var sysParameters = _context.Parameters.Where(x => x.ParamName == "AUTOMATIC_SIGN_USER" && x.IntParamValue == customMarketActualDefinition.SignedUser);
+
+            var canSignParameters =  _context.Parameters.SingleOrDefault(x => x.ParamName == "CAN_SIGN");
+
             if (_customMarket == null) return null;
 
             if (customMarketActualDefinition != null)
             {
-                customMarketActualDefinition.SignedUser = null;
-                _context.Entry(customMarketActualDefinition).State = EntityState.Modified;
+
+                if (sysParameters.Any() && canSignParameters.IntParamValue != 1)
+                {
+                    response.Message = string.Format("No se puede modificar un mercado que pertence a un periodo anterior");
+                    response.Status = false;
+
+                    return response;
+                }
+                else
+                {
+                    customMarketActualDefinition.SignedUser = null;
+                    _context.Entry(customMarketActualDefinition).State = EntityState.Modified;
+                }
             }
 
             _customMarket.Description = customMarket.Description;
